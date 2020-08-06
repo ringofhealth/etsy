@@ -1,13 +1,33 @@
 defmodule Etsy.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
       app: :etsy,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description:
+        "Etsy API Client",
+
+      # Docs
+      name: "Etsy",
+      source_url: "https://github.com/spencerdcarlson/etsy",
+      docs: docs()
+    ]
+  end
+
+  defp docs() do
+    [
+      source_ref: "v#{@version}",
+      main: "overview",
+      extra_section: "GUIDES",
+      formatters: ["html", "epub"],
+      extras: ["guides/overview.md"],
+      groups_for_extras: [Guides: ~r/guides\/[^\/]+\.md/]
     ]
   end
 
@@ -25,7 +45,8 @@ defmodule Etsy.MixProject do
       {:hackney, "~> 1.15"},
       {:jason, "~> 1.2"},
       {:oauther, "~> 1.1"},
-      {:credo, "~> 1.4"}
+      {:credo, "~> 1.4"},
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false}
     ]
   end
 end

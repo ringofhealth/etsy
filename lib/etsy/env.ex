@@ -27,12 +27,9 @@ defmodule Etsy.Env do
   end
 
   @doc """
-  Enable the ranch web server.
+  Set API scopes.
 
-  This option is similar to setting `runtime: false` for the dependency
-  in your mix.exs file but allows you to start and stop the server depending on the environment.
-
-  default value: `true`
+  default value: `["profile_r", "email_r", "transactions_r", "feedback_r"]`
 
   Set using System env or elixir config:
 

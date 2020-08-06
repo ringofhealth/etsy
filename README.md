@@ -1,6 +1,6 @@
 # Etsy
 
-**TODO: Add description**
+Elixir [etsy.com](https://www.etsy.com/developers/documentation/getting_started/oauth) api client
 
 ## Installation
 

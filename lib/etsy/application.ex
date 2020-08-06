@@ -4,11 +4,15 @@ defmodule Etsy.Application do
   @moduledoc false
 
   use Application
+  alias Etsy.Env
 
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Etsy.Worker.start_link(arg)
-      # {Etsy.Worker, arg}
+      :hackney_pool.child_spec(Etsy.ConnectionPool,
+        timeout: Env.timeout(),
+        max_connections: Env.max_connections()
+      ),
+      Etsy.TokenSecretAgent
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

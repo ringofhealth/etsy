@@ -1,18 +1,12 @@
 defmodule Etsy do
   @moduledoc """
-  Documentation for Etsy.
+  Main Etsy API
   """
 
-  @doc """
-  Hello world.
+  alias Etsy.HTTP
 
-  ## Examples
+  def authorization_url, do: HTTP.authorization_url()
 
-      iex> Etsy.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
+  def access_token(oauth_token, oauth_verifier),
+    do: HTTP.access_token(oauth_token, oauth_verifier)
 end

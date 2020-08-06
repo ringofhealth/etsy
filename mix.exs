@@ -10,6 +10,7 @@ defmodule Etsy.MixProject do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      package: package(),
       description:
         "Etsy API Client",
 
@@ -28,6 +29,16 @@ defmodule Etsy.MixProject do
       formatters: ["html", "epub"],
       extras: ["guides/overview.md"],
       groups_for_extras: [Guides: ~r/guides\/[^\/]+\.md/]
+    ]
+  end
+
+  defp package() do
+    [
+      licenses: ["MIT"],
+      files: ~w(CHANGELOG* config LICENSE* README* lib mix.exs priv .formatter.exs),
+      links: %{
+        "GitHub" => "https://github.com/spencerdcarlson/etsy"
+      }
     ]
   end
 

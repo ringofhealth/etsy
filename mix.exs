@@ -43,7 +43,7 @@ defmodule Etsy.MixProject do
   defp deps do
     [
       {:hackney, "~> 1.15"},
-      {:jason, "~> 1.2"},
+      {:jason, "~> 1.0"},
       {:oauther, "~> 1.1"},
       {:credo, "~> 1.4"},
       {:ex_doc, "~> 0.22", only: :dev, runtime: false}

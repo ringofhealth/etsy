@@ -1,7 +1,7 @@
 defmodule Etsy.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.0-alpha"
 
   def project do
     [

@@ -35,7 +35,7 @@ defmodule Etsy.MixProject do
   defp package() do
     [
       licenses: ["MIT"],
-      files: ~w(CHANGELOG* config LICENSE* README* lib mix.exs priv .formatter.exs),
+      files: ~w(CHANGELOG* config LICENSE* README* lib mix.exs .formatter.exs),
       links: %{
         "GitHub" => "https://github.com/spencerdcarlson/etsy"
       }

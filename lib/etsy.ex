@@ -10,7 +10,8 @@ defmodule Etsy do
   def access_token(oauth_verifier),
     do: Api.access_token(oauth_verifier)
 
-  def scopes, do: Api.scopes()
+  def scopes, do: Api.get("/oauth/scopes")
 
-  def user, do: Api.user()
+  def call(:get, path), do: Api.get(path)
+  def call(:post, path, params), do: Api.post(path, params)
 end

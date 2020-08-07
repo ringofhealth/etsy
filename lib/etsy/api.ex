@@ -46,18 +46,18 @@ defmodule Etsy.Api do
     end
   end
 
-  def scopes do
-    uri = "https://openapi.etsy.com/v2/oauth/scopes"
-    {header, _} = HTTP.oauth_headers(:get, uri)
-
-    HTTP.get(uri, header)
+  def get(path) do
+    {header, _} = HTTP.oauth_headers(:get, uri(path))
+    HTTP.get(uri(path), header)
   end
 
-  def user do
-    uri = "https://openapi.etsy.com/v2/users/__SELF__"
-    {header, _} = HTTP.oauth_headers(:get, uri)
-    HTTP.get(uri, header)
+  def post(path, params) do
+    {header, params} = HTTP.oauth_headers(:post, uri(path), params: params)
+
+    HTTP.post(uri(path), header, params)
   end
+
+  defp uri(path), do: Env.base_uri() <> path
 
   defp get_login_url(body) do
     case Regex.named_captures(~r/login_url=(?<login_url>.*)/, URI.decode(body)) do

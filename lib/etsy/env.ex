@@ -7,6 +7,7 @@ defmodule Etsy.Env do
 
   @app :etsy
   @defaults [
+    base_uri: "https://openapi.etsy.com/v2",
     scopes: ~w(profile_r email_r transactions_r feedback_r),
     max_connections: 50,
     timeout: 150_000,
@@ -24,6 +25,11 @@ defmodule Etsy.Env do
     |> Application.spec()
     |> Keyword.get(:vsn)
     |> to_string()
+  end
+
+  def base_uri do
+    "ETSY_BASE_URI"
+    |> env(:base_uri)
   end
 
   @doc """

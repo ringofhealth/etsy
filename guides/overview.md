@@ -58,4 +58,27 @@ If the user has already authorized your application, and you have their oauth to
 you can skip the Oauth flow by setting the token and secret 
 using `Etsy.TokenStore.update_token/1` and `Etsy.TokenStore.update_token_secret/1` respectively.
 
+Once the oauth token and oauth secret are set you can call any `Etsy` functions to hit the etsy's api
+
+```elixir
+# get oauth stored token and secret from db
+Etsy.TokenStore.update_token("66ec3b28686...")
+Etsy.TokenStore.update_token_secret("1e51...")
+Etsy.call(:get, "/v2/users/__SELF__")
+Etsy.call(:get, "/shops/:shop_id/listings/draft?shop_id=SDCEncasedDevShop")
+Etsy.call(:get, "/users/__SELF__/shipping/templates")
+
+# Create listing
+Etsy.call(:post, "/listings", [
+    {"quantity", "1"},
+    {"title", "test-api-listing"},
+    {"description", "test api created listing"},
+    {"price", "0.50"},
+    {"taxonomy_id", "1633"},
+    {"who_made", "i_did"},
+    {"is_supply", "false"},
+    {"when_made", "made_to_order"},
+  ])
+```
+
  

@@ -10,12 +10,12 @@ defmodule Etsy.HTTP do
     request(:get, uri, [{"content-type", "application/json"} | List.wrap(headers)], "")
   end
 
-  def post(uri, headers, body) do
+  def post(uri, headers, params) do
     request(
       :post,
       uri,
-      [{"content-type", "application/x-www-form-urlencoded"} | List.wrap(headers)],
-      body
+      List.wrap(headers),
+      {:form, params}
     )
   end
 
@@ -80,8 +80,12 @@ defmodule Etsy.HTTP do
         body(headers, ref)
 
       {:ok, 401, _, ref} ->
-        Logger.debug("Unauthorized HTTP response. #{inspect(:hackney.body(ref))}")
+        Logger.warn("Unauthorized HTTP response. #{inspect(:hackney.body(ref))}")
         {:error, :unauthorized}
+
+      {:ok, 403, headers, ref} ->
+        Logger.warn("Forbidden HTTP response. #{inspect(:hackney.body(ref))}")
+        {:error, :forbidden}
 
       {:ok, status, _, ref} ->
         Logger.warn("Unhandled HTTP error. #{inspect(:hackney.body(ref))}")

@@ -12,7 +12,7 @@ defmodule Etsy.Env do
     timeout: 150_000,
     consumer_key: "",
     consumer_secret: "",
-    callback: "https://sdc-encased-backend.ngrok.io/oauth/etsy"
+    callback: "oob"
   ]
 
   @doc """

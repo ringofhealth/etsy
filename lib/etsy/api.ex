@@ -53,6 +53,12 @@ defmodule Etsy.Api do
     HTTP.get(uri, header)
   end
 
+  def user do
+    uri = "https://openapi.etsy.com/v2/users/__SELF__"
+    {header, _} = HTTP.oauth_headers(:get, uri)
+    HTTP.get(uri, header)
+  end
+
   defp get_login_url(body) do
     case Regex.named_captures(~r/login_url=(?<login_url>.*)/, URI.decode(body)) do
       %{"login_url" => login_url} -> {:ok, login_url}

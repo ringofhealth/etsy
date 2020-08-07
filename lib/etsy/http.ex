@@ -6,15 +6,34 @@ defmodule Etsy.HTTP do
   require Logger
   alias Etsy.Env
 
-  def get(uri, headers), do: request(:get, uri, headers, "")
-  def post(uri, headers, body), do: request(:post, uri, headers, body)
+  def get(uri, headers) do
+    request(:get, uri, [{"content-type", "application/json"} | List.wrap(headers)], "")
+  end
 
-  defp request(method, uri, headers, body) when method in [:get, :post] do
+  def post(uri, headers, body) do
+    request(
+      :post,
+      uri,
+      [{"content-type", "application/x-www-form-urlencoded"} | List.wrap(headers)],
+      body
+    )
+  end
+
+  def put(uri, headers, body) do
+    request(
+      :put,
+      uri,
+      [{"content-type", "application/x-www-form-urlencoded"} | List.wrap(headers)],
+      body
+    )
+  end
+
+  defp request(method, uri, headers, body) when method in [:get, :put, :post] do
     handle_response(
       :hackney.request(
         method,
         uri,
-        [{"content-type", "application/json"} | List.wrap(headers)],
+        headers,
         body,
         pool: Etsy.ConnectionPool
       )
@@ -24,6 +43,7 @@ defmodule Etsy.HTTP do
   def oauth_headers(method, url, options \\ [])
   def oauth_headers(:get, url, options), do: oauth_headers("get", url, options)
   def oauth_headers(:post, url, options), do: oauth_headers("post", url, options)
+  def oauth_headers(:put, url, options), do: oauth_headers("put", url, options)
 
   def oauth_headers(method, url, options) when method in ["get", "post"] do
     # https://oauth1.wp-api.org/docs/basics/Auth-Flow.html
@@ -64,14 +84,15 @@ defmodule Etsy.HTTP do
         {:error, :unauthorized}
 
       {:ok, status, _, ref} ->
-        Logger.debug("Unhandled HTTP error. #{inspect(:hackney.body(ref))}")
+        Logger.warn("Unhandled HTTP error. #{inspect(:hackney.body(ref))}")
         {:error, status}
 
       error = {:error, _type} ->
         error
 
       other ->
-        other
+        Logger.warn("Unknown error. #{inspect(other)}")
+        {:error, :handle_response}
     end
   end
 

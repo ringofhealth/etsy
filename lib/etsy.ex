@@ -11,4 +11,6 @@ defmodule Etsy do
     do: Api.access_token(oauth_verifier)
 
   def scopes, do: Api.scopes()
+
+  def user, do: Api.user()
 end

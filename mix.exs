@@ -11,8 +11,7 @@ defmodule Etsy.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      description:
-        "Etsy API Client",
+      description: "Etsy API Client",
 
       # Docs
       name: "Etsy",

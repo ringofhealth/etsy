@@ -3,10 +3,12 @@ defmodule Etsy do
   Main Etsy API
   """
 
-  alias Etsy.HTTP
+  alias Etsy.Api
 
-  def authorization_url, do: HTTP.authorization_url()
+  def authorization_url, do: Api.authorization_url()
 
-  def access_token(oauth_token, oauth_verifier),
-    do: HTTP.access_token(oauth_token, oauth_verifier)
+  def access_token(oauth_verifier),
+    do: Api.access_token(oauth_verifier)
+
+  def scopes, do: Api.scopes()
 end

@@ -6,84 +6,58 @@ defmodule Etsy.HTTP do
   require Logger
   alias Etsy.Env
 
-  @simple_headers [{"content-type", "application/json"}]
+  def get(uri, headers), do: request(:get, uri, headers, "")
+  def post(uri, headers, body), do: request(:post, uri, headers, body)
 
-  def authorization_url do
-    {header, _} = oauth_headers(request_token_uri())
-
-    response =
+  defp request(method, uri, headers, body) when method in [:get, :post] do
+    handle_response(
       :hackney.request(
-        :get,
-        request_token_uri(),
-        List.wrap(header),
-        "",
-        pool: Etsy.ConnectionPool
-      )
-      |> handle_response()
-
-    with {:ok, response} <- response,
-         %{"login_url" => login_url} when is_binary(login_url) <-
-           Regex.named_captures(~r/login_url=(?<login_url>.*)/, URI.decode(response)),
-         uri = %URI{query: query} <- URI.parse(login_url),
-         secret when is_binary(secret) <-
-           query |> URI.decode_query() |> Map.get("oauth_token_secret"),
-         "true" <- query |> URI.decode_query() |> Map.get("oauth_callback_confirmed") do
-      Etsy.TokenSecretAgent.set(secret)
-      {:ok, URI.to_string(uri)}
-    end
-  end
-
-  def access_token(oauth_token, oauth_verifier) do
-    uri = "https://openapi.etsy.com/v2/oauth/access_token"
-    {header, req_params} = oauth_headers(uri, oauth_token, oauth_verifier)
-
-    response =
-      :hackney.request(
-        :get,
+        method,
         uri,
-        List.wrap(header),
-        req_params,
+        [{"content-type", "application/json"} | List.wrap(headers)],
+        body,
         pool: Etsy.ConnectionPool
       )
-      |> handle_response()
-
-    with {:ok, response} <- response,
-         result = %{"oauth_token" => _, "oauth_token_secret" => _} <- URI.decode_query(response) do
-      {:ok, result}
-    end
+    )
   end
 
-  def request_token_uri do
-    "https://openapi.etsy.com/v2/oauth/request_token"
-    |> URI.parse()
-    |> Map.put(:query, URI.encode_query(%{scope: Env.scopes(), oauth_callback: Env.callback()}))
-    |> URI.to_string()
-  end
+  def oauth_headers(method, url, options \\ [])
+  def oauth_headers(:get, url, options), do: oauth_headers("get", url, options)
+  def oauth_headers(:post, url, options), do: oauth_headers("post", url, options)
 
-  defp oauth_headers(url, token \\ nil, verifier \\ nil) do
+  def oauth_headers(method, url, options) when method in ["get", "post"] do
     # https://oauth1.wp-api.org/docs/basics/Auth-Flow.html
     creds =
       OAuther.credentials(
         consumer_key: Env.consumer_key(),
         consumer_secret: Env.consumer_secret(),
-        token: token,
-        token_secret: Etsy.TokenSecretAgent.value()
+        token: Etsy.TokenStore.token(),
+        token_secret: Etsy.TokenStore.token_secret()
       )
 
-    extra_headers = if is_nil(verifier), do: [], else: [{"oauth_verifier", verifier}]
+    params =
+      cond do
+        Keyword.has_key?(options, :verifier) ->
+          [{"oauth_verifier", Keyword.get(options, :verifier)}]
 
-    "get"
-    |> OAuther.sign(url, extra_headers, creds)
+        Keyword.has_key?(options, :params) ->
+          Keyword.get(options, :params)
+
+        true ->
+          []
+      end
+
+    method
+    |> OAuther.sign(url, params, creds)
     |> OAuther.header()
   end
 
-  def headers(token) when is_bitstring(token), do: [{"authorization", token} | @simple_headers]
-  def headers(_), do: @simple_headers
+  def oauth_headers(_, _, _), do: {:error, :oauth_headers}
 
   def handle_response(response) do
     case response do
-      {:ok, code, _, ref} when is_number(code) and code >= 200 and code < 300 ->
-        body(ref)
+      {:ok, code, headers, ref} when is_number(code) and code >= 200 and code < 300 ->
+        body(headers, ref)
 
       {:ok, 401, _, ref} ->
         Logger.debug("Unauthorized HTTP response. #{inspect(:hackney.body(ref))}")
@@ -101,10 +75,31 @@ defmodule Etsy.HTTP do
     end
   end
 
-  defp body(ref) do
-    case :hackney.body(ref) do
-      {:ok, body} -> {:ok, body}
-      _ -> {:error, :body}
+  defp body(headers, ref) do
+    if json?(headers) do
+      with {:body, {:ok, body}} <- {:body, :hackney.body(ref)},
+           {:decode, {:ok, decoded}} <- {:decode, Jason.decode(body)} do
+        {:ok, decoded}
+      else
+        error ->
+          Logger.error("Error json decoding body. #{inspect(error)}")
+          {:error, :body}
+      end
+    else
+      case :hackney.body(ref) do
+        {:ok, body} ->
+          {:ok, body}
+
+        error ->
+          Logger.error("Error text decoding body. #{inspect(error)}")
+          {:error, :body}
+      end
     end
   end
+
+  defp json?(headers) when is_list(headers) do
+    Enum.any?(headers, fn {_key, value} -> String.downcase(value) == "application/json" end)
+  end
+
+  defp json?(_), do: false
 end

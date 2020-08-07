@@ -12,7 +12,7 @@ defmodule Etsy.Application do
         timeout: Env.timeout(),
         max_connections: Env.max_connections()
       ),
-      Etsy.TokenSecretAgent
+      Etsy.TokenStore
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

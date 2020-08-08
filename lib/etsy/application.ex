@@ -11,8 +11,7 @@ defmodule Etsy.Application do
       :hackney_pool.child_spec(Etsy.ConnectionPool,
         timeout: Env.timeout(),
         max_connections: Env.max_connections()
-      ),
-      Etsy.TokenStore
+      )
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

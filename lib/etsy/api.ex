@@ -3,13 +3,12 @@ defmodule Etsy.Api do
   Etsy Api
   """
   require Logger
-  alias Etsy.{Env, HTTP, TokenStore}
+  alias Etsy.{Credentials, Env, HTTP}
   @access_token_uri "https://openapi.etsy.com/v2/oauth/access_token"
   @request_token_uri "https://openapi.etsy.com/v2/oauth/request_token"
 
   def authorization_url do
-    with {:clear_oauth, :ok} <- {:clear_oauth, TokenStore.clear()},
-         {:sign, {:ok, {headers, _}}} <- {:sign, HTTP.sign("get", request_token_uri())},
+    with {:sign, {:ok, {headers, _}}} <- {:sign, HTTP.sign("get", request_token_uri())},
          {:request, {:ok, body}} <- {:request, HTTP.call(:get, request_token_uri(), headers)},
          {:login_url, {:ok, login_url}} <- {:login_url, get_login_url(body)},
          {:parse_uri, {:ok, uri = %URI{query: query}}} <- {:parse_uri, parse_uri(login_url)},
@@ -20,11 +19,8 @@ defmodule Etsy.Api do
              "oauth_token_secret" => token_secret,
              "oauth_callback_confirmed" => confirmed?
            }}} <- {:decode, decode_query_params(query)},
-         {:confirmed, "true"} <- {:confirmed, confirmed?},
-         {:save_token, :ok} <- {:save_token, Etsy.TokenStore.update_token(token)},
-         {:save_token_secret, :ok} <-
-           {:save_token_secret, Etsy.TokenStore.update_token_secret(token_secret)} do
-      {:ok, URI.to_string(uri)}
+         {:confirmed, "true"} <- {:confirmed, confirmed?} do
+      {:ok, {Credentials.new(token: token, secret: token_secret), URI.to_string(uri)}}
     else
       error ->
         Logger.error("Error getting authorization_url. error: #{inspect(error)}")
@@ -32,22 +28,18 @@ defmodule Etsy.Api do
     end
   end
 
-  def access_token(oauth_verifier) do
+  def access_token(%Credentials{} = credentials, oauth_verifier) do
     with {:sign, {:ok, {headers, _}}} <-
-           {:sign, HTTP.sign("get", @access_token_uri, verifier: oauth_verifier)},
+           {:sign, HTTP.sign("get", credentials, @access_token_uri, verifier: oauth_verifier)},
          {:request, {:ok, body}} <- {:request, HTTP.call(:get, @access_token_uri, headers)},
-         {:decode,
-          result = %{"oauth_token" => oauth_token, "oauth_token_secret" => oauth_token_secret}} <-
-           {:decode, URI.decode_query(body)},
-         {:save_token, :ok} <- {:save_token, TokenStore.update_token(oauth_token)},
-         {:save_token_secret, :ok} <-
-           {:save_token_secret, TokenStore.update_token_secret(oauth_token_secret)} do
-      {:ok, result}
+         {:decode, %{"oauth_token" => oauth_token, "oauth_token_secret" => oauth_token_secret}} <-
+           {:decode, URI.decode_query(body)} do
+      {:ok, Credentials.new(token: oauth_token, secret: oauth_token_secret)}
     end
   end
 
-  def call(method, path) when method in [:get, :delete] do
-    case HTTP.sign(Atom.to_string(method), uri(path)) do
+  def call(method, %Credentials{} = credentials, path) when method in [:get, :delete] do
+    case HTTP.sign(Atom.to_string(method), credentials, uri(path)) do
       {:ok, {header, _}} ->
         HTTP.call(method, uri(path), header)
 
@@ -56,10 +48,10 @@ defmodule Etsy.Api do
     end
   end
 
-  def call(_, _), do: {:error, :call}
+  def call(_, _, _), do: {:error, :call}
 
-  def call(method, path, params) when method in [:post, :put] do
-    case HTTP.sign(Atom.to_string(method), uri(path), params: params) do
+  def call(method, %Credentials{} = credentials, path, params) when method in [:post, :put] do
+    case HTTP.sign(Atom.to_string(method), credentials, uri(path), params: params) do
       {:ok, {header, params}} ->
         HTTP.call(method, uri(path), header, params)
 
@@ -68,7 +60,7 @@ defmodule Etsy.Api do
     end
   end
 
-  def call(_, _, _), do: {:error, :call}
+  def call(_, _, _, _), do: {:error, :call}
 
   defp uri(path), do: Env.base_uri() <> path
 

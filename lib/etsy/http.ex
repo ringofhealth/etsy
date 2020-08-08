@@ -4,7 +4,7 @@ defmodule Etsy.HTTP do
   """
 
   require Logger
-  alias Etsy.Env
+  alias Etsy.{Credentials, Env}
 
   def call(method, uri, headers) when method in [:get, :delete] do
     request(method, uri, List.wrap(headers), "")
@@ -35,16 +35,19 @@ defmodule Etsy.HTTP do
     )
   end
 
-  def sign(method, url, options \\ [])
+  def sign(method, url), do: sign(method, %Credentials{}, url)
 
-  def sign(method, url, options) when method in ["get", "put", "post", "delete"] do
+  def sign(method, credentials, url, options \\ [])
+
+  def sign(method, %Credentials{token: token, secret: secret}, url, options)
+      when method in ["get", "put", "post", "delete"] do
     # https://oauth1.wp-api.org/docs/basics/Auth-Flow.html
     creds =
       OAuther.credentials(
         consumer_key: Env.consumer_key(),
         consumer_secret: Env.consumer_secret(),
-        token: Etsy.TokenStore.token(),
-        token_secret: Etsy.TokenStore.token_secret()
+        token: token,
+        token_secret: secret
       )
 
     params =
@@ -65,7 +68,7 @@ defmodule Etsy.HTTP do
      |> OAuther.header()}
   end
 
-  def sign(_, _, _), do: {:error, :bad_method}
+  def sign(_, _, _, _), do: {:error, :bad_method}
 
   defp handle_response(response) do
     case response do

@@ -6,29 +6,24 @@ defmodule Etsy.HTTP do
   require Logger
   alias Etsy.Env
 
-  def get(uri, headers) do
-    request(:get, uri, [{"content-type", "application/json"} | List.wrap(headers)], "")
+  def call(method, uri, headers) when method in [:get, :delete] do
+    request(method, uri, List.wrap(headers), "")
   end
 
-  def post(uri, headers, params) do
+  def call(_, _, _), do: {:error, :bad_method}
+
+  def call(method, uri, headers, params) when method in [:post, :put] do
     request(
-      :post,
+      method,
       uri,
       List.wrap(headers),
       {:form, params}
     )
   end
 
-  def put(uri, headers, body) do
-    request(
-      :put,
-      uri,
-      [{"content-type", "application/x-www-form-urlencoded"} | List.wrap(headers)],
-      body
-    )
-  end
+  def call(_, _, _, _), do: {:error, :bad_method}
 
-  defp request(method, uri, headers, body) when method in [:get, :put, :post] do
+  defp request(method, uri, headers, body) when method in [:get, :put, :post, :delete] do
     handle_response(
       :hackney.request(
         method,
@@ -40,12 +35,9 @@ defmodule Etsy.HTTP do
     )
   end
 
-  def oauth_headers(method, url, options \\ [])
-  def oauth_headers(:get, url, options), do: oauth_headers("get", url, options)
-  def oauth_headers(:post, url, options), do: oauth_headers("post", url, options)
-  def oauth_headers(:put, url, options), do: oauth_headers("put", url, options)
+  def sign(method, url, options \\ [])
 
-  def oauth_headers(method, url, options) when method in ["get", "post"] do
+  def sign(method, url, options) when method in ["get", "put", "post", "delete"] do
     # https://oauth1.wp-api.org/docs/basics/Auth-Flow.html
     creds =
       OAuther.credentials(
@@ -67,12 +59,13 @@ defmodule Etsy.HTTP do
           []
       end
 
-    method
-    |> OAuther.sign(url, params, creds)
-    |> OAuther.header()
+    {:ok,
+     method
+     |> OAuther.sign(url, params, creds)
+     |> OAuther.header()}
   end
 
-  def oauth_headers(_, _, _), do: {:error, :oauth_headers}
+  def sign(_, _, _), do: {:error, :bad_method}
 
   def handle_response(response) do
     case response do
@@ -83,7 +76,7 @@ defmodule Etsy.HTTP do
         Logger.warn("Unauthorized HTTP response. #{inspect(:hackney.body(ref))}")
         {:error, :unauthorized}
 
-      {:ok, 403, headers, ref} ->
+      {:ok, 403, _, ref} ->
         Logger.warn("Forbidden HTTP response. #{inspect(:hackney.body(ref))}")
         {:error, :forbidden}
 
@@ -96,7 +89,7 @@ defmodule Etsy.HTTP do
 
       other ->
         Logger.warn("Unknown error. #{inspect(other)}")
-        {:error, :handle_response}
+        {:error, :unknown}
     end
   end
 

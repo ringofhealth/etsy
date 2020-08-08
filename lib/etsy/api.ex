@@ -7,9 +7,9 @@ defmodule Etsy.Api do
 
   def authorization_url do
     uri = request_token_uri()
-    {headers, _} = HTTP.oauth_headers(:get, uri)
 
-    with {:request, {:ok, body}} <- {:request, HTTP.get(uri, headers)},
+    with {:sign, {:ok, {headers, _}}} <- {:sign, HTTP.sign("get", uri)},
+         {:request, {:ok, body}} <- {:request, HTTP.call(:get, uri, headers)},
          {:login_url, {:ok, login_url}} <- {:login_url, get_login_url(body)},
          {:parse_uri, {:ok, uri = %URI{query: query}}} <- {:parse_uri, parse_uri(login_url)},
          {:decode,
@@ -33,9 +33,10 @@ defmodule Etsy.Api do
 
   def access_token(oauth_verifier) do
     uri = "https://openapi.etsy.com/v2/oauth/access_token"
-    {headers, _} = HTTP.oauth_headers(:get, uri, verifier: oauth_verifier)
 
-    with {:request, {:ok, body}} <- {:request, HTTP.get(uri, headers)},
+    with {:sign, {:ok, {headers, _}}} <-
+           {:sign, HTTP.sign("get", uri, verifier: oauth_verifier)},
+         {:request, {:ok, body}} <- {:request, HTTP.call(:get, uri, headers)},
          {:decode,
           result = %{"oauth_token" => oauth_token, "oauth_token_secret" => oauth_token_secret}} <-
            {:decode, URI.decode_query(body)},
@@ -46,16 +47,29 @@ defmodule Etsy.Api do
     end
   end
 
-  def get(path) do
-    {header, _} = HTTP.oauth_headers(:get, uri(path))
-    HTTP.get(uri(path), header)
+  def call(method, path) when method in [:get, :delete] do
+    case HTTP.sign(Atom.to_string(method), uri(path)) do
+      {:ok, {header, _}} ->
+        HTTP.call(method, uri(path), header)
+
+      error ->
+        Logger.error("Error calling Etsy.Api.call/2. error: #{inspect(error)}")
+    end
   end
 
-  def post(path, params) do
-    {header, params} = HTTP.oauth_headers(:post, uri(path), params: params)
+  def call(_, _), do: {:error, :call}
 
-    HTTP.post(uri(path), header, params)
+  def call(method, path, params) when method in [:post, :put] do
+    case HTTP.sign(Atom.to_string(method), uri(path), params: params) do
+      {:ok, {header, params}} ->
+        HTTP.call(method, uri(path), header, params)
+
+      error ->
+        Logger.error("Error calling Etsy.Api.call/2. error: #{inspect(error)}")
+    end
   end
+
+  def call(_, _, _), do: {:error, :call}
 
   defp uri(path), do: Env.base_uri() <> path
 

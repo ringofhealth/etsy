@@ -4,12 +4,13 @@ defmodule Etsy.Api do
   """
   require Logger
   alias Etsy.{Env, HTTP, TokenStore}
+  @access_token_uri "https://openapi.etsy.com/v2/oauth/access_token"
+  @request_token_uri "https://openapi.etsy.com/v2/oauth/request_token"
 
   def authorization_url do
-    uri = request_token_uri()
-
-    with {:sign, {:ok, {headers, _}}} <- {:sign, HTTP.sign("get", uri)},
-         {:request, {:ok, body}} <- {:request, HTTP.call(:get, uri, headers)},
+    with {:clear_oauth, :ok} <- {:clear_oauth, TokenStore.clear()},
+         {:sign, {:ok, {headers, _}}} <- {:sign, HTTP.sign("get", request_token_uri())},
+         {:request, {:ok, body}} <- {:request, HTTP.call(:get, request_token_uri(), headers)},
          {:login_url, {:ok, login_url}} <- {:login_url, get_login_url(body)},
          {:parse_uri, {:ok, uri = %URI{query: query}}} <- {:parse_uri, parse_uri(login_url)},
          {:decode,
@@ -32,11 +33,9 @@ defmodule Etsy.Api do
   end
 
   def access_token(oauth_verifier) do
-    uri = "https://openapi.etsy.com/v2/oauth/access_token"
-
     with {:sign, {:ok, {headers, _}}} <-
-           {:sign, HTTP.sign("get", uri, verifier: oauth_verifier)},
-         {:request, {:ok, body}} <- {:request, HTTP.call(:get, uri, headers)},
+           {:sign, HTTP.sign("get", @access_token_uri, verifier: oauth_verifier)},
+         {:request, {:ok, body}} <- {:request, HTTP.call(:get, @access_token_uri, headers)},
          {:decode,
           result = %{"oauth_token" => oauth_token, "oauth_token_secret" => oauth_token_secret}} <-
            {:decode, URI.decode_query(body)},
@@ -107,7 +106,7 @@ defmodule Etsy.Api do
   end
 
   defp request_token_uri do
-    "https://openapi.etsy.com/v2/oauth/request_token"
+    @request_token_uri
     |> URI.parse()
     |> Map.put(:query, URI.encode_query(%{scope: Env.scopes(), oauth_callback: Env.callback()}))
     |> URI.to_string()

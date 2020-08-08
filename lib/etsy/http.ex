@@ -67,7 +67,7 @@ defmodule Etsy.HTTP do
 
   def sign(_, _, _), do: {:error, :bad_method}
 
-  def handle_response(response) do
+  defp handle_response(response) do
     case response do
       {:ok, code, headers, ref} when is_number(code) and code >= 200 and code < 300 ->
         body(headers, ref)

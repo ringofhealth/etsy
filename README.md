@@ -9,7 +9,7 @@ Add `:etsy` to your mix.exs file
 ```elixir
 def deps do
   [
-    {:etsy, "~> 0.1"}
+    {:etsy, "~> 1.0"}
   ]
 end
 ```
